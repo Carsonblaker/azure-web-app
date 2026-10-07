@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}My Lifts{% endblock %}
+
+{% block content %}
+  <h1>My Lifts</h1>
+
+  {# Alert #}
+  <div class="alert alert-info">
+    I'm tracking {{ lifts | length }} lifts, and my PRs add up to
+    {{ lifts | sum(attribute="pr") }} lbs.
+  </div>
+
+  {# Cards with badges and progress bars #}
+  <div class="row g-3 mb-4">
+    {% for lift in lifts %}
+      {% set percent = (lift.pr / lift.goal * 100) | round | int %}
+      <div class="col-12 col-md-6 col-lg-3">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">
+              {{ lift.name | title }}
+              {% if lift.pr >= 225 %}
+                <span class="badge text-bg-success">Heavy</span>
+              {% endif %}
+            </h5>
+            <span class="badge text-bg-secondary">{{ lift.muscle_group | upper }}</span>
+            <p class="card-text mt-2">PR: {{ lift.pr }} lbs / Goal: {{ lift.goal }} lbs</p>
+            <div class="progress" role="progressbar" aria-valuenow="{{ percent }}"
+                 aria-valuemin="0" aria-valuemax="100">
+              <div class="progress-bar" style="width: {{ percent }}%">{{ percent }}%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="alert alert-warning">No lifts yet!</div>
+    {% endfor %}
+  </div>
+
+  {# List group, sorted heaviest first #}
+  <h2>Ranked by PR</h2>
+  <ul class="list-group mb-4">
+    {% for lift in lifts | sort(attribute="pr", reverse=True) %}
+      <li class="list-group-item d-flex justify-content-between align-items-center">
+        {{ loop.index }}. {{ lift.name | title }}
+        <span class="badge text-bg-primary rounded-pill">{{ lift.pr }} lbs</span>
+      </li>
+    {% endfor %}
+  </ul>
+
+  {# Accordion with a form tip for each lift #}
+  <h2>Form Tips</h2>
+  <div class="accordion mb-4" id="tipsAccordion">
+    {% for lift in lifts %}
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed" type="button"
+                  data-bs-toggle="collapse" data-bs-target="#tip{{ lift.id }}">
+            {{ lift.name | title }}
+          </button>
+        </h2>
+        <div id="tip{{ lift.id }}" class="accordion-collapse collapse"
+             data-bs-parent="#tipsAccordion">
+          <div class="accordion-body">{{ lift.tip }}</div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% endblock %}
