@@ -136,16 +136,41 @@ async function submitRegisterForm(event) {
 	hideModal("registerModal");
 }
 
-// TODO: Write submitLoginForm(event) here.
-// It should look a lot like submitRegisterForm above:
-//   1. Stop the browser's default form submission.
-//   2. Validate the loginUsername and loginPassword inputs.
-//   3. POST the username and password to /login.
-//   4. Show the server's message in an alert, whether the login worked or not.
-//   5. If it worked, close the login modal.
+// Runs when the login form is submitted.
+async function submitLoginForm(event) {
+	// Stop the browser from submitting the form and reloading the page.
+	event.preventDefault();
 
-// Remove the green/red validation styling from an input once the user starts
-// typing in it again.
+	// Validate both fields so they both light up red if they're wrong.
+	let isValid = validatePassword("loginPassword");
+	isValid = validateUsername("loginUsername") && isValid;
+	if (!isValid) {
+		return;
+	}
+
+	// The keys here must match what the server reads in Login.post().
+	const formData = {
+		username: document.getElementById("loginUsername").value,
+		password: document.getElementById("loginPassword").value,
+	};
+
+	const reply = await postJson("/login", formData);
+	if (reply === null) {
+		alert("Could not reach the server. Please try again.");
+		return;
+	}
+
+	// The server's message is either BAD_LOGIN_MESSAGE or the welcome message.
+	if (!reply.response.ok) {
+		alert("Login failed: " + reply.result.message);
+		return;
+	}
+
+	alert(reply.result.message);
+	hideModal("loginModal");
+}
+
+
 function clearValidation(event) {
 	event.target.classList.remove("is-invalid", "is-valid");
 }
@@ -172,8 +197,7 @@ function attachEventListeners() {
 	// ?. means "only call addEventListener if the element exists". Every page
 	// includes this script, but a page might not have every form on it.
 	document.getElementById("registerForm")?.addEventListener("submit", submitRegisterForm);
-
-	// TODO: Attach submitLoginForm to the login form's "submit" event.
+	document.getElementById("loginForm")?.addEventListener("submit", submitLoginForm);
 
 	for (const input of document.querySelectorAll("input")) {
 		input.addEventListener("input", clearValidation);

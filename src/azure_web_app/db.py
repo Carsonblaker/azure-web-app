@@ -20,11 +20,7 @@ from ._constants import CONNECTION_STRING_VARIABLE
 def get_connection_string() -> str:
     """Read the connection string from the environment"""
     
-    # On your laptop, create_app() loads it from your .secret.env file. On Azure,
-    # it comes from the environment variable you set in the portal.
-    # ======================= GUIDE HELPER: DELETE BEFORE YOU SUBMIT =======================
-    # These checks only exist to give you clearer error messages while you work
-    # through the guide. Delete everything between the two GUIDE HELPER lines.
+
     connection_string = os.environ.get(CONNECTION_STRING_VARIABLE)
     if not connection_string:
         raise RuntimeError(
@@ -40,7 +36,6 @@ def get_connection_string() -> str:
             f"Delete the 'Driver={{ODBC Driver 18 for SQL Server}};' part of "
             f"{CONNECTION_STRING_VARIABLE}. mssql-python includes its own driver."
         )
-    # ===================================== END GUIDE HELPER =====================================
 
     return os.environ[CONNECTION_STRING_VARIABLE]
 
@@ -96,30 +91,27 @@ class Database:
         self.connection.commit()
         return True
 
-    # ------------------------------------------------------------------------
-    # YOUR TASK (part 1 of 2): write get_login_info.
-    #
-    # It takes a username and returns the row for that user, or None if there
-    # is no such user. SELECT the columns Login needs: the password hash, the
-    # display name, and the last login time.
-    #
-    # fetchone() returns a row (or None). Rows from mssql-python let you use
-    # column names: row.display_name
-    #
-    # Bonus: also write update_last_login(username), which sets the user's
-    # last_login to the current time. Use GETDATE() in your SQL (so the time
-    # comes from the database's clock, like create_date does), and commit.
-    # ------------------------------------------------------------------------
+    def get_login_info(self, username: str):
+        """Return the login info for this username, or None if there is no such user."""
+        with self.connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT password, display_name, last_login FROM Users WHERE username = ?",
+                (username,),
+            )
+            return cursor.fetchone()
 
-    # def get_login_info(self, username: str):
-    #     ...
+    def update_last_login(self, username: str) -> None:
+        """Set this user's last_login to the current time."""
+        with self.connection.cursor() as cursor:
+            cursor.execute(
+                "UPDATE Users SET last_login = GETDATE() WHERE username = ?",
+                (username,),
+            )
+        self.connection.commit()
 
 
 def get_db() -> Database:
     """Return this request's Database, connecting on first use."""
-    # `g` is Flask's per-request storage (remember it from the API activity?).
-    # Anything we put on it disappears when the request ends, so each request
-    # gets its own Database, and requests never share one.
     if "db" not in g:
         g.db = Database(mssql_python.connect(get_connection_string()))
     return g.db

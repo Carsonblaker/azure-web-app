@@ -101,38 +101,42 @@ class Register(Resource):
         return {"message": "User created successfully", "displayName": display_name}, 201
 
 
-# ----------------------------------------------------------------------------
-# YOUR TASK (part 2 of 2): implement the login endpoint.
-# (Part 1 is get_login_info in db.py. Write that first.)
-#
-# 1. Uncomment the Login class below, and the api.add_resource line for it in
-#    setup_auth (at the bottom of this file).
-# 2. Read the username and password from the JSON body. Look at how Register
-#    does this, including what it does when a field is missing.
-# 3. Use get_db().get_login_info(username) to look up the user.
-# 4. If no user came back, OR check_password_hash(stored_hash, password) says
-#    the password is wrong, return {"message": BAD_LOGIN_MESSAGE}, 401
-#    Use the same message for both cases. Why? (Hint: what could an attacker
-#    learn if "no such user" and "wrong password" were different messages?)
-# 5. On success, return a 200 response whose "message" welcomes the user back
-#    by their display name and tells them when they last logged in.
-#    Careful: last_login is NULL in the database (None in Python) the very
-#    first time someone logs in.
-#
-# Bonus: after a successful login, call the update_last_login method you
-#        wrote in db.py.
-# ----------------------------------------------------------------------------
+class Login(Resource):
+    def post(self):
+        data = get_json_body()
 
-# class Login(Resource):
-#     def post(self):
-#         ...
+        missing_field = find_missing_field(data, ("username", "password"))
+        if missing_field is not None:
+            return {"message": f"Missing required field: {missing_field}"}, 400
+
+        username = data["username"]
+        password = data["password"]
+
+        db = get_db()
+        user = db.get_login_info(username)
+
+        # Same message whether the user doesn't exist or the password is wrong,
+        # so an attacker can't use this endpoint to find out which usernames exist.
+        if user is None or not check_password_hash(user.password, password):
+            return {"message": BAD_LOGIN_MESSAGE}, 401
+
+        # last_login is None the first time someone logs in.
+        if user.last_login is None:
+            message = f"Welcome, {user.display_name}! This is your first time logging in."
+        else:
+            last_login = user.last_login.strftime("%B %d, %Y at %I:%M %p")
+            message = f"Welcome back, {user.display_name}! You last logged in on {last_login}."
+
+        # Bonus: record this login. We built the message first, so it still
+        # shows the *previous* login time.
+        db.update_last_login(username)
+
+        return {"message": message, "displayName": user.display_name}, 200
 
 
 def setup_auth(app: Flask) -> None:
     """Register the authentication endpoints with the app. Should be called when first creating the flask app"""
-    # We create the Api object in here, instead of at the top of the file, so
-    # that nothing happens just because someone imported this module.
     api = Api(app)
     api.add_resource(Register, "/register")
-    # TODO: Once you implement Login
-    # api.add_resource(Login, "/login")
+    api.add_resource(Login, "/login")
+
